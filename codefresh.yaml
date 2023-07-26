@@ -1,0 +1,67 @@
+# More examples of Codefresh YAML can be found at
+# https://codefresh.io/docs/docs/yaml-examples/examples/
+
+version: "1.0"
+# Stages can help you organize your steps in stages
+stages:
+  - "clone"
+  - "prepare"
+  - "test"
+  - "build"
+
+steps:
+  clone:
+    type: "parallel"
+    steps:
+      cloneTestInfra:
+        title: "Cloning shush-rs-test-infra repository"
+        type: "git-clone"
+        stage: "clone"
+        repo: "Matrix-Zhang/shush-rs-test-infra"
+        # CF_BRANCH value is auto set when pipeline is triggered
+        # Learn more at codefresh.io/docs/docs/codefresh-yaml/variables/
+        revision: "main"
+        git: "github"
+      cloneApp:
+        title: "Cloning shush-rs repository"
+        type: "git-clone"
+        stage: "clone"
+        repo: "Matrix-Zhang/shush-rs"
+        # CF_BRANCH value is auto set when pipeline is triggered
+        # Learn more at codefresh.io/docs/docs/codefresh-yaml/variables/
+        revision: "${{CF_BRANCH}}"
+        git: "github"
+
+  pulumi:
+    title: "Pulumi Up"
+    stage: "prepare"
+    image: "pulumi/pulumi-dotnet:latest"
+    working_directory: "./shush-rs-test-infra"
+    commands:
+      - pulumi login
+      - pulumi stack select dev
+      - pulumi refresh --non-interactive --yes
+      - cf_export AWS_KMS_KEY_ID="$(pulumi stack output KeyId)"
+      - cf_export AWS_KMS_KEY_ALIAS="$(pulumi stack output KeyAlias)"
+
+  test:
+    title: "Cargo test"
+    type: "freestyle" # Run any command
+    stage: "test"
+    image: "rust:alpine3.18" # The image in which command will be executed
+    working_directory: "./shush-rs" # Running command where code cloned
+    commands:
+      - "apk add musl-dev"
+      - "env SHUSH_KEY=${{AWS_KMS_KEY_ID}} SHUSH_ALIAS=${{AWS_KMS_KEY_ALIAS}} cargo test"
+
+  build:
+    title: "Building Docker image"
+    type: "build"
+    stage: "build"
+    image_name: "matrix2016/shush-rs"
+    working_directory: "./shush-rs"
+    tag: "${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}"
+    tags:
+      - "latest"
+    registry: "matrix2016"
+    dockerfile: "Dockerfile"
