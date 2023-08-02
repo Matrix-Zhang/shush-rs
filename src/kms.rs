@@ -2,7 +2,10 @@ use std::str::FromStr;
 
 use anyhow::{anyhow, Result};
 use aws_sdk_kms::{primitives::Blob, Client};
-use base64::{engine::general_purpose::STANDARD_NO_PAD as base64_std, Engine};
+use base64::{
+    engine::general_purpose::{STANDARD as base64_std, STANDARD_NO_PAD as base64_no_padding},
+    Engine,
+};
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -58,7 +61,7 @@ impl Kms {
         }
     }
 
-    pub(crate) async fn encrypt(&self, key: Key, plaintext: &str) -> Result<String> {
+    pub(crate) async fn encrypt(&self, key: Key, plaintext: &str, no_padding: bool) -> Result<String> {
         self.client
             .encrypt()
             .key_id(key)
@@ -70,14 +73,24 @@ impl Kms {
                 response
                     .ciphertext_blob()
                     .ok_or_else(|| anyhow!("Could not get encrypted cipher text"))
-                    .map(|blob| base64_std.encode(blob))
+                    .map(|blob| {
+                        if no_padding {
+                            base64_no_padding.encode(blob)
+                        } else {
+                            base64_std.encode(blob)
+                        }
+                    })
             })
     }
 
-    pub(crate) async fn decrypt(&self, cipher_text: &str) -> Result<DecryptOutput> {
+    pub(crate) async fn decrypt(&self, cipher_text: &str, no_padding: bool) -> Result<DecryptOutput> {
         self.client
             .decrypt()
-            .ciphertext_blob(Blob::new(base64_std.decode(cipher_text.as_bytes())?))
+            .ciphertext_blob(Blob::new(if no_padding {
+                base64_no_padding.decode(cipher_text.as_bytes())?
+            } else {
+                base64_std.decode(cipher_text.as_bytes())?
+            }))
             .send()
             .await
             .map_err(Into::into)

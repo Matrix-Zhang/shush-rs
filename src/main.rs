@@ -25,12 +25,16 @@ struct EncryptArgs {
     key: Key,
     #[arg(default_value_t = false, long, short)]
     trim: bool,
+    #[arg(default_value_t = false, long = "no_padding")]
+    no_padding: bool,
     plain_text: MaybeStdin<String>,
 }
 
 #[derive(Args)]
 #[command(about, author, long_about = None, version)]
 struct ExecArgs {
+    #[arg(default_value_t = false, long = "no_padding")]
+    no_padding: bool,
     #[arg(default_value_t = String::from("KMS_ENCRYPTED_"), long)]
     prefix: String,
     #[arg(last = true)]
@@ -40,6 +44,8 @@ struct ExecArgs {
 #[derive(Args)]
 #[command(about, author, long_about = None, version)]
 struct DecryptArgs {
+    #[arg(default_value_t = false, long = "no_padding")]
+    no_padding: bool,
     #[arg(long = "print-key", short)]
     print_key: bool,
     cipher_text: MaybeStdin<String>,
@@ -56,7 +62,7 @@ async fn main() -> Result<()> {
             } else {
                 &encrypt.plain_text
             };
-            let cipher_text = kms.encrypt(encrypt.key, plain_text).await?;
+            let cipher_text = kms.encrypt(encrypt.key, plain_text, encrypt.no_padding).await?;
             print!("{cipher_text}");
         }
         ShushCli::Exec(exec) => {
@@ -64,7 +70,7 @@ async fn main() -> Result<()> {
                 if key.starts_with(&exec.prefix) {
                     env::remove_var(&key);
                     let decrypt_output = kms
-                        .decrypt(&value)
+                        .decrypt(&value, exec.no_padding)
                         .await
                         .map_err(|err| anyhow!("Could not decrypt key {key}, {err}"))?;
                     env::set_var(
@@ -83,7 +89,7 @@ async fn main() -> Result<()> {
             child.wait().await?;
         }
         ShushCli::Decrypt(decrypt) => {
-            let decrypt_res = kms.decrypt(&decrypt.cipher_text).await?;
+            let decrypt_res = kms.decrypt(&decrypt.cipher_text, decrypt.no_padding).await?;
             if decrypt.print_key {
                 print!("{}", decrypt_res.key_id);
             } else {
