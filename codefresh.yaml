@@ -22,6 +22,7 @@ steps:
         # Learn more at codefresh.io/docs/docs/codefresh-yaml/variables/
         revision: "main"
         git: "github"
+
       cloneApp:
         title: "Cloning shush-rs repository"
         type: "git-clone"
@@ -55,13 +56,26 @@ steps:
       - "env SHUSH_KEY=${{AWS_KMS_KEY_ID}} SHUSH_ALIAS=${{AWS_KMS_KEY_ALIAS}} cargo test"
 
   build:
-    title: "Building Docker image"
-    type: "build"
+    type: "parallel"
     stage: "build"
-    image_name: "matrix2016/shush-rs"
-    working_directory: "./shush-rs"
-    tag: "${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}"
-    tags:
-      - "latest"
-    registry: "matrix2016"
-    dockerfile: "Dockerfile"
+    steps:
+      buildAlpine:
+        title: "Building Docker image based on alpine"
+        type: "build"
+        image_name: "matrix2016/shush-rs"
+        working_directory: "./shush-rs"
+        tag: "alpine-${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}"
+        tags:
+          - "alpine-latest"
+        registry: "matrix2016"
+        dockerfile: "Dockerfile.alpine"
+      buildDebianBookworm:
+        title: "Building Docker image based on debian bookworm"
+        type: "build"
+        image_name: "matrix2016/shush-rs"
+        working_directory: "./shush-rs"
+        tag: "bookworm-${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}"
+        tags:
+          - "bookworm-latest"
+        registry: "matrix2016"
+        dockerfile: "Dockerfile.bookworm"
