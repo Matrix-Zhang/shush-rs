@@ -61,7 +61,12 @@ impl Kms {
         }
     }
 
-    pub(crate) async fn encrypt(&self, key: Key, plaintext: &str, no_padding: bool) -> Result<String> {
+    pub(crate) async fn encrypt(
+        &self,
+        key: Key,
+        plaintext: &str,
+        no_padding: bool,
+    ) -> Result<String> {
         self.client
             .encrypt()
             .key_id(key)
@@ -83,7 +88,11 @@ impl Kms {
             })
     }
 
-    pub(crate) async fn decrypt(&self, cipher_text: &str, no_padding: bool) -> Result<DecryptOutput> {
+    pub(crate) async fn decrypt(
+        &self,
+        cipher_text: &str,
+        no_padding: bool,
+    ) -> Result<DecryptOutput> {
         self.client
             .decrypt()
             .ciphertext_blob(Blob::new(if no_padding {

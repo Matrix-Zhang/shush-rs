@@ -37,7 +37,7 @@ struct ExecArgs {
     no_padding: bool,
     #[arg(default_value_t = String::from("KMS_ENCRYPTED_"), long)]
     prefix: String,
-    #[arg(last = true)]
+    command: String,
     args: Vec<String>,
 }
 
@@ -62,7 +62,9 @@ async fn main() -> Result<()> {
             } else {
                 &encrypt.plain_text
             };
-            let cipher_text = kms.encrypt(encrypt.key, plain_text, encrypt.no_padding).await?;
+            let cipher_text = kms
+                .encrypt(encrypt.key, plain_text, encrypt.no_padding)
+                .await?;
             print!("{cipher_text}");
         }
         ShushCli::Exec(exec) => {
@@ -80,16 +82,16 @@ async fn main() -> Result<()> {
                 }
             }
 
-            let command = exec.args.join(" ");
-            let mut child = if cfg!(target_os = "windows") {
-                Command::new("cmd").arg("/C").arg(command).spawn()?
-            } else {
-                Command::new("sh").arg("-c").arg(command).spawn()?
-            };
-            child.wait().await?;
+            Command::new(exec.command)
+                .args(exec.args)
+                .spawn()?
+                .wait()
+                .await?;
         }
         ShushCli::Decrypt(decrypt) => {
-            let decrypt_res = kms.decrypt(&decrypt.cipher_text, decrypt.no_padding).await?;
+            let decrypt_res = kms
+                .decrypt(&decrypt.cipher_text, decrypt.no_padding)
+                .await?;
             if decrypt.print_key {
                 print!("{}", decrypt_res.key_id);
             } else {
