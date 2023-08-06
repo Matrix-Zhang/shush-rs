@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:latest-rust-alpine3.18 as chef
+FROM lukemathwalker/cargo-chef:latest-rust-slim-bookworm as chef
 WORKDIR /app
 
 FROM chef as planner
@@ -11,6 +11,6 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --bin shush-rs
 
-FROM alpine:3.18.2 AS runtime
+FROM frolvlad/alpine-glibc AS runtime
 COPY --from=builder /app/target/release/shush-rs /usr/bin/shush-rs
 ENTRYPOINT ["shush-rs"]
