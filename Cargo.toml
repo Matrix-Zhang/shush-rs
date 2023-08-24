@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 aws-config = "0.56"
-aws-sdk-kms = "0.29"
+aws-sdk-kms = "0.30"
 base64 = "0.21"
 clap = { version = "4.3", features = ["derive"] }
 clap-stdin = "0.2"
