@@ -69,7 +69,7 @@ async fn main() -> Result<()> {
         }
         ShushCli::Exec(exec) => {
             for (key, value) in env::vars() {
-                if key.starts_with(&exec.prefix) {
+                if key.starts_with(&exec.prefix) && !value.is_empty() {
                     env::remove_var(&key);
                     let decrypt_output = kms
                         .decrypt(&value, exec.no_padding)
